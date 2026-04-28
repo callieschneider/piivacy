@@ -1,0 +1,39 @@
+name: Redeploy piivacy.dev demo
+
+# When this repo's main branch is updated, the live demo at piivacy.dev installs
+# `piivacy` as a git dependency from this repo, so a fresh demo build is enough
+# to pick up the new code. We trigger that fresh build by calling Railway's
+# serviceInstanceRedeploy mutation.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # also allow a manual trigger from the Actions UI
+
+jobs:
+  redeploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Railway redeploy of piivacy-demo
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
+          RAILWAY_ENV_ID: ${{ secrets.RAILWAY_ENV_ID }}
+        run: |
+          set -euo pipefail
+          echo "Triggering Railway redeploy of service $RAILWAY_SERVICE_ID..."
+          response=$(curl -s -X POST "https://backboard.railway.app/graphql/v2" \
+            -H "Project-Access-Token: $RAILWAY_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"query\":\"mutation { serviceInstanceRedeploy(serviceId: \\\"$RAILWAY_SERVICE_ID\\\", environmentId: \\\"$RAILWAY_ENV_ID\\\") }\"}")
+          echo "Response: $response"
+          if echo "$response" | grep -q '"errors"'; then
+            echo "ERROR: Railway returned a GraphQL error"
+            exit 1
+          fi
+          if ! echo "$response" | grep -q '"serviceInstanceRedeploy"'; then
+            echo "ERROR: Unexpected response shape"
+            exit 1
+          fi
+          echo "✓ Railway redeploy triggered. Watch progress at:"
+          echo "  https://railway.app/project/9520dc92-b7d4-4645-8d5d-b82c2e544024"
