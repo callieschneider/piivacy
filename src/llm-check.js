@@ -32,19 +32,32 @@ export function buildPiiCheckPrompt(scrubbedText, opts = {}) {
   const minConfidence = opts.minConfidence ?? 0.6;
 
   const system = [
-    'You are a PII detection assistant. The user will give you a piece of text',
-    'that has ALREADY been partially redacted (some PII may appear as tokens like [[EMAIL_1]]).',
-    'Your job is to identify any PERSONAL or SENSITIVE information that is STILL present in the text',
-    `and was missed by regex. Recognized labels include: ${labels.join(', ')}.`,
-    'Reply with ONLY a JSON object in this shape and nothing else:',
-    '{ "issues": [{ "value": "<exact substring>", "label": "<LABEL>", "confidence": 0.0-1.0, "reason": "<one-line>" }] }',
-    `Only include issues where confidence >= ${minConfidence}.`,
-    'NEVER include token literals (anything matching [[LABEL_N]]) as an issue.',
-    'NEVER invent values that don\'t literally appear in the text.',
-    'If you find nothing, respond with { "issues": [] }.'
-  ].join(' ');
+    'You are a PII detection assistant. The user gives you text that has ALREADY been partially redacted (some PII appears as tokens like [[EMAIL_1]]).',
+    `Your job: find any personal or sensitive info STILL present in the text. Recognized labels: ${labels.join(', ')}.`,
+    '',
+    'OUTPUT FORMAT: a single JSON object with one key "issues" (an array). Nothing else. No prose, no markdown.',
+    '',
+    'EXAMPLE 1',
+    'Text: "Hi, my name is Jane Doe and I work at Acme Corp."',
+    'Output: {"issues":[{"value":"Jane Doe","label":"NAME","confidence":0.95},{"value":"Acme Corp","label":"COMPANY","confidence":0.85}]}',
+    '',
+    'EXAMPLE 2',
+    'Text: "Email me at [[EMAIL_1]]."',
+    'Output: {"issues":[]}',
+    '',
+    'EXAMPLE 3',
+    'Text: "Project Phoenix launches on the 5th. Contact Marcus Chen for details."',
+    'Output: {"issues":[{"value":"Project Phoenix","label":"CODENAME","confidence":0.9},{"value":"Marcus Chen","label":"NAME","confidence":0.95}]}',
+    '',
+    'RULES',
+    `- Only emit issues where confidence >= ${minConfidence}.`,
+    '- Each "value" MUST be an exact substring that literally appears in the text. Do not invent values.',
+    '- NEVER emit token literals (anything matching [[LABEL_N]]).',
+    '- If you find nothing, output {"issues":[]}.',
+    '- Output the JSON and stop. No commentary.'
+  ].join('\n');
 
-  return { system, user: scrubbedText };
+  return { system, user: `Text: ${JSON.stringify(scrubbedText)}\nOutput:` };
 }
 
 export function parsePiiCheckResponse(rawText) {

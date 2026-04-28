@@ -9,7 +9,9 @@ import {
 test('buildScrubIntentPrompt returns {system, user}', () => {
   const p = buildScrubIntentPrompt('find restaurants near 234 Main St');
   assert.equal(typeof p.system, 'string');
-  assert.equal(p.user, 'find restaurants near 234 Main St');
+  // The user message wraps the text in a Query/Output frame to nudge small
+  // models toward emitting just the JSON. Just check the original text is in it.
+  assert.ok(p.user.includes('find restaurants near 234 Main St'));
   assert.ok(p.system.includes('redact'));
   assert.ok(p.system.includes('preserve'));
   assert.ok(p.system.includes('synthetic'));

@@ -10,7 +10,9 @@ import { createSession, registerSecret } from '../src/sessions.js';
 test('buildPiiCheckPrompt returns a {system, user} pair', () => {
   const p = buildPiiCheckPrompt('hello [[EMAIL_1]]');
   assert.equal(typeof p.system, 'string');
-  assert.equal(p.user, 'hello [[EMAIL_1]]');
+  // The user message is now wrapped in a Text/Output frame to constrain
+  // small-model output to JSON. Just confirm the input text is in there.
+  assert.ok(p.user.includes('hello [[EMAIL_1]]'));
   assert.ok(p.system.includes('NAME'));
   assert.ok(p.system.includes('JSON'));
 });
