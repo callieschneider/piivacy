@@ -63,6 +63,11 @@ export async function scrub(text, existingSession, opts = {}) {
     for (const m of matches) {
       const value = m.value;
       if (TOKEN_LITERAL_RE.test(value)) continue; // never re-redact our own tokens
+      // If this value is already a known FAKE produced by a previous pass on
+      // the same session, leave it alone. Otherwise scrub-of-scrub is not
+      // idempotent: e.g. the realistic ZIP fake "00001" itself matches the
+      // ZIP regex, so a second pass would treat it as new PII.
+      if (session.fakes && Object.prototype.hasOwnProperty.call(session.fakes, value)) continue;
       if (typeof pattern.validate === 'function' && !pattern.validate(value)) continue;
 
       let substitute;

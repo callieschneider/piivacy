@@ -437,7 +437,13 @@ export const DEFAULT_PATTERNS = [
   // -------------------- financial --------------------
   {
     label: 'IBAN',
-    regex: /\b[A-Z]{2}\d{2}(?:[ -]?[A-Z0-9]){11,30}\b/g,
+    // Two valid formats:
+    //   1. No-separator: GB82WEST12345698765432 (country + check + 11-30 alphanumeric)
+    //   2. Space-grouped: GB82 WEST 1234 5698 7654 32 (4-char groups, last 1-4)
+    // Earlier looser pattern allowed separators between any chars and would
+    // extend the match into adjacent text (e.g. "GB82...432 EB" eating MAC
+    // bytes), which then failed mod-97 validation and lost the IBAN entirely.
+    regex: /\b[A-Z]{2}\d{2}(?:[A-Z0-9]{11,30}|[ -](?:[A-Z0-9]{4}[ -]){1,7}[A-Z0-9]{1,4})\b/g,
     category: 'financial',
     priority: 30,
     validate: (v) => ibanMod97(v),
@@ -445,7 +451,14 @@ export const DEFAULT_PATTERNS = [
   },
   {
     label: 'CC',
-    regex: /\b(?:\d[ -]?){12,18}\d\b/g,
+    // Earlier looser pattern `\b(?:\d[ -]?){12,18}\d\b` allowed any single
+    // separator between any two digits, so a 5-digit ZIP followed by a CC
+    // (e.g. "35000 4197 0518 4714 0496") would match as one 16-digit run
+    // starting at the ZIP. Luhn would then reject the wrong slice and the
+    // real CC was lost. New regex requires either an unbroken 12-19 digit
+    // run, or a consistent 4-digit-group format (single separator type).
+    // (?<![0-9]) + (?![0-9]) prevent the match from starting/ending mid-run.
+    regex: /(?<![0-9])(?:\d{12,19}|\d{4}(?:[ ]\d{4}){2,3}(?:[ ]\d{1,3})?|\d{4}(?:-\d{4}){2,3}(?:-\d{1,3})?|\d{4}\.\d{4}\.\d{4}\.\d{4})(?![0-9])/g,
     category: 'financial',
     priority: 31,
     validate: (v) => luhn(v),
