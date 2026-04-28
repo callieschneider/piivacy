@@ -1,0 +1,14 @@
+node_modules/
+*.log
+.DS_Store
+.env
+.env.local
+
+# Build artifacts (only the final names.json is shipped)
+data/.embeddings-cache.json
+data/.raw/
+data/.tmp/
+
+# Editor
+.vscode/
+.idea/

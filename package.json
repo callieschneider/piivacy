@@ -1,0 +1,34 @@
+{
+  "name": "mostly-no-pii",
+  "version": "0.1.0",
+  "description": "PII scrubber for LLM calls. Three substitution modes (token, realistic, pass-through), pluggable patterns, BYO-LLM helpers, optional in-browser/local-model name redaction. Two functions, no proxy, no server.",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./adapters/openrouter": "./src/adapters/openrouter.js",
+    "./adapters/ollama": "./src/adapters/ollama.js",
+    "./adapters/webllm": "./src/adapters/webllm.js"
+  },
+  "files": ["src", "data/names.json", "README.md", "LICENSE"],
+  "scripts": {
+    "test": "node --test test/",
+    "build:names": "node scripts/build-names.mjs"
+  },
+  "engines": { "node": ">=18" },
+  "keywords": [
+    "pii",
+    "privacy",
+    "llm",
+    "redaction",
+    "openai",
+    "anthropic",
+    "tokenization",
+    "pseudonymization"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/callieschneider/mostly-no-pii"
+  }
+}
