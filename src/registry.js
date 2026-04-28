@@ -15,38 +15,38 @@ const VALID_CATEGORIES = new Set([
 
 function validateEntry(entry) {
   if (!entry || typeof entry !== 'object') {
-    throw new TypeError('mostly-no-pii: pattern entry must be an object');
+    throw new TypeError('piivacy: pattern entry must be an object');
   }
   if (typeof entry.label !== 'string' || !LABEL_RE.test(entry.label)) {
     throw new TypeError(
-      `mostly-no-pii: pattern label must match /^[A-Z][A-Z0-9_]*$/, got ${JSON.stringify(entry.label)}`
+      `piivacy: pattern label must match /^[A-Z][A-Z0-9_]*$/, got ${JSON.stringify(entry.label)}`
     );
   }
   if (!(entry.regex instanceof RegExp)) {
-    throw new TypeError(`mostly-no-pii: pattern.regex must be a RegExp (label=${entry.label})`);
+    throw new TypeError(`piivacy: pattern.regex must be a RegExp (label=${entry.label})`);
   }
   if (!entry.regex.global) {
-    throw new TypeError(`mostly-no-pii: pattern.regex must have the /g flag (label=${entry.label})`);
+    throw new TypeError(`piivacy: pattern.regex must have the /g flag (label=${entry.label})`);
   }
   if (typeof entry.category !== 'string' || !VALID_CATEGORIES.has(entry.category)) {
     throw new TypeError(
-      `mostly-no-pii: pattern.category must be one of ${[...VALID_CATEGORIES].join(', ')} (label=${entry.label})`
+      `piivacy: pattern.category must be one of ${[...VALID_CATEGORIES].join(', ')} (label=${entry.label})`
     );
   }
   if (entry.priority !== undefined && typeof entry.priority !== 'number') {
-    throw new TypeError(`mostly-no-pii: pattern.priority must be a number (label=${entry.label})`);
+    throw new TypeError(`piivacy: pattern.priority must be a number (label=${entry.label})`);
   }
   if (entry.validate !== undefined && typeof entry.validate !== 'function') {
-    throw new TypeError(`mostly-no-pii: pattern.validate must be a function (label=${entry.label})`);
+    throw new TypeError(`piivacy: pattern.validate must be a function (label=${entry.label})`);
   }
   if (entry.fake !== undefined && typeof entry.fake !== 'function') {
-    throw new TypeError(`mostly-no-pii: pattern.fake must be a function (label=${entry.label})`);
+    throw new TypeError(`piivacy: pattern.fake must be a function (label=${entry.label})`);
   }
   if (entry.referenceForms !== undefined && typeof entry.referenceForms !== 'function') {
-    throw new TypeError(`mostly-no-pii: pattern.referenceForms must be a function (label=${entry.label})`);
+    throw new TypeError(`piivacy: pattern.referenceForms must be a function (label=${entry.label})`);
   }
   if (entry.description !== undefined && typeof entry.description !== 'string') {
-    throw new TypeError(`mostly-no-pii: pattern.description must be a string (label=${entry.label})`);
+    throw new TypeError(`piivacy: pattern.description must be a string (label=${entry.label})`);
   }
 }
 

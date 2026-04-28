@@ -18,8 +18,8 @@ export class OpenRouterAdapter extends BaseAdapter {
     this.apiKey = opts.apiKey;
     this.model = opts.model ?? DEFAULT_MODEL;
     this.endpoint = opts.endpoint ?? DEFAULT_ENDPOINT;
-    this.referer = opts.referer ?? 'https://github.com/callieschneider/mostly-no-pii';
-    this.title = opts.title ?? 'mostly-no-pii';
+    this.referer = opts.referer ?? 'https://github.com/callieschneider/piivacy';
+    this.title = opts.title ?? 'piivacy';
   }
 
   async generateAlternates(realNames, count = 1) {

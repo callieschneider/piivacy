@@ -1,4 +1,4 @@
-// mostly-no-pii — public API
+// piivacy — public API
 //
 // Two functions you'll use 95% of the time:
 //   const { text, session } = await scrub(input, existingSession?, opts?)
@@ -42,8 +42,8 @@ export {
 // Note: name-substitution adapters (OpenRouterAdapter, OllamaAdapter,
 // WebLLMAdapter) are exposed via subpath imports, not re-exported here:
 //
-//   import { OpenRouterAdapter } from 'mostly-no-pii/adapters/openrouter';
-//   import { OllamaAdapter }     from 'mostly-no-pii/adapters/ollama';
-//   import { WebLLMAdapter }     from 'mostly-no-pii/adapters/webllm';
+//   import { OpenRouterAdapter } from 'piivacy/adapters/openrouter';
+//   import { OllamaAdapter }     from 'piivacy/adapters/ollama';
+//   import { WebLLMAdapter }     from 'piivacy/adapters/webllm';
 //
 // This keeps the main bundle lean for token-mode-only callers.

@@ -10,7 +10,7 @@
 //
 // Example:
 //   import { CreateMLCEngine } from '@mlc-ai/web-llm';
-//   import { WebLLMAdapter } from 'mostly-no-pii/adapters/webllm';
+//   import { WebLLMAdapter } from 'piivacy/adapters/webllm';
 //   const engine = await CreateMLCEngine('Phi-3.5-mini-instruct-q4f16_1-MLC');
 //   const adapter = new WebLLMAdapter({ engine });
 

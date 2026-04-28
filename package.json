@@ -1,7 +1,7 @@
 {
-  "name": "mostly-no-pii",
+  "name": "piivacy",
   "version": "0.1.0",
-  "description": "PII scrubber for LLM calls. Three substitution modes (token, realistic, pass-through), pluggable patterns, BYO-LLM helpers, optional in-browser/local-model name redaction. Two functions, no proxy, no server.",
+  "description": "PIIvacy \u2014 PII scrubber for LLM calls. Three substitution modes (token, realistic, pass-through), pluggable patterns, BYO-LLM helpers, optional in-browser/local-model name redaction. Two functions, no proxy, no server.",
   "type": "module",
   "main": "src/index.js",
   "exports": {
@@ -29,6 +29,6 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/callieschneider/mostly-no-pii"
+    "url": "https://github.com/callieschneider/piivacy"
   }
 }

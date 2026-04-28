@@ -1,13 +1,15 @@
-# mostly-no-pii
+# PIIvacy
 
 > A serverless PII scrubber for LLM calls. Two functions. Three substitution modes. No proxy. No server. Zero runtime dependencies.
+>
+> The npm package is `piivacy`. The brand is **PIIvacy**.
 
 ```bash
-npm install mostly-no-pii
+npm install piivacy
 ```
 
 ```js
-import { scrub, restore, createSession } from 'mostly-no-pii';
+import { scrub, restore, createSession } from 'piivacy';
 
 const session = createSession();
 const { text } = await scrub('Email me at jane@acme.com', session);
@@ -23,9 +25,9 @@ That's the whole loop. The package never makes an HTTP call. Everything happens 
 
 ---
 
-## Why "mostly"?
+## What it actually catches (and what it doesn't)
 
-Regex catches **most** common PII — emails, phones, SSNs, credit cards, API keys, addresses, etc. — across **30+ patterns in 6 categories**. It will miss things a human or LLM would catch (names, codenames, oblique references, free-form sensitive context). For those, the package ships an opt-in **second-pass LLM check** that you run with any chat model you already have. Combined coverage gets you very close to "no PII"; the name acknowledges that's an asymptote, not a guarantee.
+Regex catches **most** common PII — emails, phones, SSNs, credit cards, API keys, addresses, etc. — across **35+ patterns in 6 categories**. It will miss things a human or LLM would catch (names, codenames, oblique references, free-form sensitive context). For those, the package ships an opt-in **second-pass LLM check** that you run with any chat model you already have. Combined coverage gets you very close to "no PII"; the goal is an asymptote, not a guarantee.
 
 If you need cryptographic guarantees, hire a security team. If you need "stop accidentally pasting the customer's SSN into ChatGPT", this is for you.
 
@@ -78,7 +80,7 @@ listPatterns()                     // [{ label, category, priority, description,
 ### Modes & presets
 
 ```js
-import { presets } from 'mostly-no-pii';
+import { presets } from 'piivacy';
 await scrub(text, session, presets.maximumRedaction);     // token everything
 await scrub(text, session, presets.naturalConversation);  // contact + location realistic
 await scrub(text, session, presets.localSearch);          // location pass-through
@@ -174,7 +176,7 @@ await scrub(text, session, { exclude: ['IPV6'] });  // never even check for IPv6
 ## Multi-turn example
 
 ```js
-import { scrub, restore, createSession } from 'mostly-no-pii';
+import { scrub, restore, createSession } from 'piivacy';
 
 const session = createSession();
 
@@ -201,7 +203,7 @@ console.log(listRedactions(session));
 
 ```js
 import OpenAI from 'openai';
-import { scrub, restore, createSession } from 'mostly-no-pii';
+import { scrub, restore, createSession } from 'piivacy';
 
 const openai = new OpenAI();
 const session = createSession();
@@ -217,7 +219,7 @@ const restored = restore(completion.choices[0].message.content, session);
 ### Realistic mode (better LLM fluency)
 
 ```js
-import { scrub, restore, createSession, presets } from 'mostly-no-pii';
+import { scrub, restore, createSession, presets } from 'piivacy';
 
 const session = createSession();
 const { text } = await scrub(userInput, session, presets.naturalConversation);
@@ -301,7 +303,7 @@ In `realistic` mode, NAME redaction prefers (in order): your session's name adap
 ## Adding custom patterns
 
 ```js
-import { registerPattern } from 'mostly-no-pii';
+import { registerPattern } from 'piivacy';
 
 registerPattern({
   label: 'INTERNAL_TICKET',
@@ -335,7 +337,7 @@ import {
   buildPiiCheckPrompt,
   parsePiiCheckResponse,
   applyPiiCheckIssues
-} from 'mostly-no-pii';
+} from 'piivacy';
 
 const openai = new OpenAI();
 const session = createSession();
@@ -375,7 +377,7 @@ import {
   buildScrubIntentPrompt,
   parseScrubIntentResponse,
   applyScrubIntent
-} from 'mostly-no-pii';
+} from 'piivacy';
 
 const userInput = 'Find Indian restaurants near 234 Main St, Brooklyn, NY 11211';
 
@@ -419,8 +421,8 @@ npm install @mlc-ai/web-llm
 
 ```js
 import { CreateMLCEngine } from '@mlc-ai/web-llm';
-import { WebLLMAdapter } from 'mostly-no-pii/adapters/webllm';
-import { createSession, scrub } from 'mostly-no-pii';
+import { WebLLMAdapter } from 'piivacy/adapters/webllm';
+import { createSession, scrub } from 'piivacy';
 
 const engine = await CreateMLCEngine('Phi-3.5-mini-instruct-q4f16_1-MLC');
 const session = createSession({ nameAdapter: new WebLLMAdapter({ engine }) });
@@ -429,7 +431,7 @@ const session = createSession({ nameAdapter: new WebLLMAdapter({ engine }) });
 ### Ollama (local model)
 
 ```js
-import { OllamaAdapter } from 'mostly-no-pii/adapters/ollama';
+import { OllamaAdapter } from 'piivacy/adapters/ollama';
 
 const session = createSession({
   nameAdapter: new OllamaAdapter({ model: 'phi3:mini' })  // assumes ollama is running locally
@@ -439,7 +441,7 @@ const session = createSession({
 ### OpenRouter (cloud, any small model)
 
 ```js
-import { OpenRouterAdapter } from 'mostly-no-pii/adapters/openrouter';
+import { OpenRouterAdapter } from 'piivacy/adapters/openrouter';
 
 const session = createSession({
   nameAdapter: new OpenRouterAdapter({
@@ -456,7 +458,7 @@ All three adapters mix the real names with **decoy names** before sending the pr
 ## Inspecting redactions
 
 ```js
-import { listRedactions } from 'mostly-no-pii';
+import { listRedactions } from 'piivacy';
 
 await scrub('Email a@x.com phone (415) 555-0142 SSN 123-45-6789', session);
 
@@ -500,9 +502,9 @@ Sessions are plain JSON objects. To persist across processes, just `JSON.stringi
 
 | Always loaded | Lazy-loaded | Sub-import |
 |---|---|---|
-| Core (scrub, restore, registry, modes, sessions, BYO-LLM helpers) | `data/names.json` (~23 MB, only on first realistic NAME use) | `mostly-no-pii/adapters/openrouter` |
-| 30+ default patterns | | `mostly-no-pii/adapters/ollama` |
-| | | `mostly-no-pii/adapters/webllm` |
+| Core (scrub, restore, registry, modes, sessions, BYO-LLM helpers) | `data/names.json` (~23 MB, only on first realistic NAME use) | `piivacy/adapters/openrouter` |
+| 30+ default patterns | | `piivacy/adapters/ollama` |
+| | | `piivacy/adapters/webllm` |
 
 Token-mode-only callers pay zero overhead beyond core. Realistic-mode callers without NAMEs pay zero extra. Adapter users pay only their adapter's tiny wrapper.
 
@@ -522,11 +524,11 @@ If you're handling regulated data, consult a security professional. If you're tr
 
 ---
 
-## Why "mostly"?
+## Honest limits
 
 There is no perfect PII detector. Names are ambiguous. "John" is a name, a noun ("john" as toilet), a verb ("to john"). Companies are names. Aliases exist. Free text contains thousands of leakage modes regex can't cover. We get most of them. We don't claim to get all of them.
 
-The honest naming up front beats a confidently-named library that silently fails.
+PIIvacy is defense in depth, not a magic shield.
 
 ---
 

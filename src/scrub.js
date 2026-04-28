@@ -25,7 +25,7 @@ export async function scrub(text, existingSession, opts = {}) {
     throw new TypeError('scrub: text must be a string');
   }
   if (existingSession && isExpired(existingSession) && !opts.allowExpired) {
-    throw new Error('mostly-no-pii: session has expired');
+    throw new Error('piivacy: session has expired');
   }
   const session = existingSession || createSession();
 

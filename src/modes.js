@@ -19,7 +19,7 @@ const NEVER_PASS_THROUGH_CATEGORIES = new Set(['secrets', 'financial', 'identifi
 function validate(mode) {
   if (!VALID_MODES.has(mode)) {
     throw new Error(
-      `mostly-no-pii: invalid mode "${mode}". Use 'token' | 'realistic' | 'pass-through'`
+      `piivacy: invalid mode "${mode}". Use 'token' | 'realistic' | 'pass-through'`
     );
   }
   return mode;
