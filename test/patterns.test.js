@@ -340,6 +340,58 @@ test('ADDRESS_US', () => {
   assert.ok(matchAll('Visit 4567 Sunset Boulevard', 'ADDRESS_US').length === 1);
 });
 
+test('ADDRESS_US — case-insensitive', () => {
+  assert.ok(matchAll('123 main street', 'ADDRESS_US').length === 1);
+  assert.ok(matchAll('456 OAK AVE', 'ADDRESS_US').length === 1);
+  assert.ok(matchAll('send to 5182 river drive', 'ADDRESS_US').length === 1);
+});
+
+test('ADDRESS_US — ordinal street names', () => {
+  assert.ok(matchAll('123 5th Ave', 'ADDRESS_US').length === 1);
+  assert.ok(matchAll('100 East 42nd Street', 'ADDRESS_US').length === 1);
+  assert.ok(matchAll('500 1st Ave', 'ADDRESS_US').length === 1);
+  assert.ok(matchAll('200 3rd St', 'ADDRESS_US').length === 1);
+});
+
+test('ADDRESS_US — letter house numbers (UK-style)', () => {
+  assert.ok(matchAll('221B Baker Street', 'ADDRESS_US').length === 1);
+  assert.ok(matchAll('100A Main St', 'ADDRESS_US').length === 1);
+});
+
+test('ADDRESS_US — punctuation in street names', () => {
+  assert.ok(matchAll("123 St Mary's Drive", 'ADDRESS_US').length === 1);
+  assert.ok(matchAll("456 O'Brien Lane", 'ADDRESS_US').length === 1);
+  assert.ok(matchAll('789 Smith-Jones Way', 'ADDRESS_US').length === 1);
+});
+
+test('ADDRESS_US — extended suffix list', () => {
+  for (const suffix of [
+    'Place', 'Square', 'Plaza', 'Terrace', 'Circle', 'Trail',
+    'Crossing', 'Heights', 'Ridge', 'Vista', 'View',
+    'Hollow', 'Pass', 'Loop', 'Manor', 'Junction', 'Landing'
+  ]) {
+    const txt = `lives at 123 Oak ${suffix}`;
+    assert.ok(
+      matchAll(txt, 'ADDRESS_US').length === 1,
+      `expected ADDRESS_US to match "${txt}"`
+    );
+  }
+});
+
+test('ADDRESS_US — Highway/Route format', () => {
+  assert.ok(matchAll('1234 Highway 100', 'ADDRESS_US').length === 1);
+  assert.ok(matchAll('5678 Route 66', 'ADDRESS_US').length === 1);
+});
+
+test('ADDRESS_US — does NOT match casual number+word phrases', () => {
+  assert.equal(matchAll('I had 100 dollars', 'ADDRESS_US').length, 0);
+  assert.equal(matchAll('5 minutes ago', 'ADDRESS_US').length, 0);
+  assert.equal(matchAll('100 percent of users', 'ADDRESS_US').length, 0);
+  assert.equal(matchAll('She is 30 years old', 'ADDRESS_US').length, 0);
+  assert.equal(matchAll('order #12345 was shipped', 'ADDRESS_US').length, 0);
+  assert.equal(matchAll('page 42 of the report', 'ADDRESS_US').length, 0);
+});
+
 test('ZIP_US', () => {
   assert.ok(matchAll('ZIP 90210', 'ZIP_US').length === 1);
   assert.ok(matchAll('ZIP 90210-1234', 'ZIP_US').length === 1);
