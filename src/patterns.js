@@ -535,7 +535,16 @@ export const DEFAULT_PATTERNS = [
   // -------------------- location --------------------
   {
     label: 'ADDRESS_US',
-    regex: /\b\d{1,5}[A-Za-z]?\s+(?:(?:\d+(?:st|nd|rd|th)|[A-Za-z]+(?:[-'][A-Za-z]+)*\.?)\s+){1,4}(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Boulevard|Ln|Lane|Dr|Drive|Way|Pl|Place|Ct|Court|Pkwy|Parkway|Hwy|Highway|Ter|Terr|Terrace|Plz|Plaza|Sq|Square|Cir|Circle|Trl|Trail|Loop|Row|Mews|Xing|Crossing|Ctr|Center|Centre|Pike|Tpke|Turnpike|Rte|Route|Crescent|Cres|Cove|Cv|Bend|Bridge|Hts|Heights|Hill|Hollow|Knoll|Pointe|Pte|Point|Ridge|Vista|View|Manor|Meadows|Esplanade|Promenade|Junction|Jct|Landing|Lodge|Harbor|Haven|Glen|Grove|Inlet|Garden|Gardens|Gateway|Pass|Spur|Summit|Trace|Valley|Viaduct|Village|Vlg)\b\.?|\b\d{1,5}\s+(?:Highway|Hwy|Route|Rte|Interstate|I)[\s-]\d+\b/gi,
+    // Two alternatives:
+    //   1. <num>[A-Za-z]? <street words> <suffix from canonical list>
+    //   2. <num> <Highway|Route|Interstate|I> <num>  (route numbers)
+    //
+    // Negative lookahead after the leading number blocks the common false
+    // positive class "<n> <time-or-measurement-unit> <ambiguous-suffix>"
+    // (e.g. "5 minute drive", "1 hour lane", "2 day walk", "10 second run").
+    // The street-number group `\d{1,5}(?:[-/]\d+)?[A-Za-z]?` also accepts
+    // hyphenated and fractional numbers like 123-A or 1/2.
+    regex: /\b\d{1,5}(?:[-/][A-Za-z0-9]+)?[A-Za-z]?\s+(?!(?:hour|hours|minute|minutes|second|seconds|day|days|week|weeks|month|months|year|years|mile|miles|foot|feet|inch|inches|meter|meters|kilometer|kilometers|km|step|steps|block|blocks|story|stories|floor|floors|bedroom|bedrooms|bathroom|bathrooms|car|cars|hour-long|day-long)\s)(?:(?:\d+(?:st|nd|rd|th)|[A-Za-z]+(?:[-'][A-Za-z]+)*\.?)\s+){1,4}(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Boulevard|Ln|Lane|Dr|Drive|Way|Pl|Place|Ct|Court|Pkwy|Parkway|Hwy|Highway|Ter|Terr|Terrace|Plz|Plaza|Sq|Square|Cir|Circle|Trl|Trail|Loop|Row|Mews|Xing|Crossing|Ctr|Center|Centre|Pike|Tpke|Turnpike|Rte|Route|Crescent|Cres|Cove|Cv|Bend|Bridge|Hts|Heights|Hill|Hollow|Knoll|Pointe|Pte|Point|Ridge|Vista|View|Manor|Meadows|Esplanade|Promenade|Junction|Jct|Landing|Lodge|Harbor|Haven|Glen|Grove|Inlet|Garden|Gardens|Gateway|Pass|Spur|Summit|Trace|Valley|Viaduct|Village|Vlg)\b\.?|\b\d{1,5}\s+(?:Highway|Hwy|Route|Rte|Interstate|I)[\s-]\d+\b/gi,
     category: 'location',
     priority: 50,
     fake: (_value, { counter }) => `${100 + (counter * 100)} Example St`,
