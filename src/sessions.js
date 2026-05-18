@@ -26,6 +26,7 @@ export function createSession(opts = {}) {
     referenceForms: {},          // partialFake -> partialOriginal
     usage: {},                   // identifier -> { count, firstSeenAt, lastSeenAt }
     _literalSecrets: [],         // [{ value, label }]
+    _skipped: [],                // [{ value, label }] — values the LLM auditor said are NOT PII
     nameAdapter: opts.nameAdapter ?? null,
     ttlMs,
     createdAt: now,
@@ -109,6 +110,52 @@ export function registerSecret(session, value, label = 'CUSTOM') {
   if (session._literalSecrets.some((s) => s.value === value && s.label === label)) return false;
   session._literalSecrets.push({ value, label });
   return true;
+}
+
+// Mark a (value, label) pair as a confirmed non-PII false positive. Future
+// scrub() calls will skip it. Also removes any existing redaction for it.
+// Returns { skipped: bool, removedIdentifier: string | null }.
+export function skipValue(session, value, label) {
+  if (!session || typeof session !== 'object') {
+    throw new TypeError('skipValue: session required');
+  }
+  if (!value || typeof value !== 'string') {
+    throw new TypeError('skipValue: value required (non-empty string)');
+  }
+  if (typeof label !== 'string' || !LABEL_RE.test(label)) {
+    throw new TypeError(`skipValue: invalid label ${JSON.stringify(label)}`);
+  }
+  if (!Array.isArray(session._skipped)) session._skipped = [];
+  const already = session._skipped.some((s) => s.value === value && s.label === label);
+  if (!already) session._skipped.push({ value, label });
+
+  // Pull any existing mapping out of the session so re-scrub produces clean text.
+  const reverseKey = `${label}::${value}`;
+  const identifier = session.reverse?.[reverseKey] ?? null;
+  if (identifier) {
+    delete session.reverse[reverseKey];
+    if (session.tokens && Object.prototype.hasOwnProperty.call(session.tokens, identifier)) {
+      delete session.tokens[identifier];
+    }
+    if (session.fakes && Object.prototype.hasOwnProperty.call(session.fakes, identifier)) {
+      delete session.fakes[identifier];
+    }
+    if (session.usage && Object.prototype.hasOwnProperty.call(session.usage, identifier)) {
+      delete session.usage[identifier];
+    }
+    // Also strip any matching _literalSecrets entry so it doesn't get re-registered
+    if (Array.isArray(session._literalSecrets)) {
+      session._literalSecrets = session._literalSecrets.filter(
+        (s) => !(s.value === value && s.label === label)
+      );
+    }
+  }
+  return { skipped: !already, removedIdentifier: identifier };
+}
+
+export function isSkipped(session, value, label) {
+  if (!session || !Array.isArray(session._skipped)) return false;
+  return session._skipped.some((s) => s.value === value && s.label === label);
 }
 
 // Inventory: returns combined token + fake redactions, sorted by first-seen.

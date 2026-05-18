@@ -15,7 +15,8 @@ import {
   createSession,
   getOrAssignToken,
   registerFake,
-  isExpired
+  isExpired,
+  isSkipped
 } from './sessions.js';
 
 const TOKEN_LITERAL_RE = /\[\[[A-Z][A-Z0-9_]*_\d+\]\]/;
@@ -37,6 +38,7 @@ export async function scrub(text, existingSession, opts = {}) {
   // ---------- PASS 1: literal secrets ----------
   for (const { value, label } of session._literalSecrets ?? []) {
     if (!value || !working.includes(value)) continue;
+    if (isSkipped(session, value, label)) continue;
     const fakePattern = { label, category: 'custom' };
     const mode = resolveMode(fakePattern, opts);
     if (mode === null || mode === 'pass-through') continue;
@@ -68,6 +70,8 @@ export async function scrub(text, existingSession, opts = {}) {
       // idempotent: e.g. the realistic ZIP fake "00001" itself matches the
       // ZIP regex, so a second pass would treat it as new PII.
       if (session.fakes && Object.prototype.hasOwnProperty.call(session.fakes, value)) continue;
+      // Skip any value the LLM auditor flagged as a false positive for this label.
+      if (isSkipped(session, value, pattern.label)) continue;
       if (typeof pattern.validate === 'function' && !pattern.validate(value)) continue;
 
       let substitute;

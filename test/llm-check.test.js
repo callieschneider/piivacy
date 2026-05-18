@@ -3,9 +3,13 @@ import assert from 'node:assert/strict';
 import {
   buildPiiCheckPrompt,
   parsePiiCheckResponse,
-  applyPiiCheckIssues
+  applyPiiCheckIssues,
+  buildPiiAuditPrompt,
+  parsePiiAuditResponse,
+  applyPiiAudit
 } from '../src/llm-check.js';
-import { createSession, registerSecret } from '../src/sessions.js';
+import { createSession, registerSecret, isSkipped, listRedactions } from '../src/sessions.js';
+import { scrub } from '../src/scrub.js';
 
 test('buildPiiCheckPrompt returns a {system, user} pair', () => {
   const p = buildPiiCheckPrompt('hello [[EMAIL_1]]');
@@ -123,4 +127,163 @@ test('full integration: parse → apply → next scrub catches the missed PII', 
   assert.ok(!pass2.includes('Acme'));
   assert.match(pass2, /\[\[NAME_1\]\]/);
   assert.match(pass2, /\[\[COMPANY_1\]\]/);
+});
+
+// ============================================================================
+// AUDIT: smarter second-pass (adds missed + removes false positives)
+// ============================================================================
+
+test('buildPiiAuditPrompt returns a {system, user} pair with findings rendered', () => {
+  const inv = [
+    { kind: 'token', identifier: '[[EMAIL_1]]', label: 'EMAIL', value: 'a@b.com', count: 1 },
+    { kind: 'token', identifier: '[[CC_1]]', label: 'CC', value: '4111 1111 1111 1111', count: 1 }
+  ];
+  const p = buildPiiAuditPrompt('hello a@b.com card 4111 1111 1111 1111', inv);
+  assert.equal(typeof p.system, 'string');
+  assert.ok(p.user.includes('hello a@b.com'));
+  assert.ok(p.user.includes('EMAIL="a@b.com"'));
+  assert.ok(p.user.includes('CC="4111 1111 1111 1111"'));
+  assert.ok(p.system.includes('missed'));
+  assert.ok(p.system.includes('false_positives'));
+});
+
+test('buildPiiAuditPrompt rejects non-string text or non-array inventory', () => {
+  assert.throws(() => buildPiiAuditPrompt(123, []), /string/);
+  assert.throws(() => buildPiiAuditPrompt('x', null), /array/);
+});
+
+test('parsePiiAuditResponse: typical valid response', () => {
+  const raw = '{"missed":[{"value":"Marcus","label":"NAME","confidence":0.95}],"false_positives":[{"value":"192.168.1.1","label":"IPV4","confidence":0.9,"reason":"LAN"}]}';
+  const { missed, falsePositives } = parsePiiAuditResponse(raw);
+  assert.equal(missed.length, 1);
+  assert.equal(missed[0].value, 'Marcus');
+  assert.equal(missed[0].label, 'NAME');
+  assert.equal(falsePositives.length, 1);
+  assert.equal(falsePositives[0].value, '192.168.1.1');
+  assert.equal(falsePositives[0].label, 'IPV4');
+  assert.equal(falsePositives[0].reason, 'LAN');
+});
+
+test('parsePiiAuditResponse: tolerates camelCase falsePositives key', () => {
+  const raw = '{"missed":[],"falsePositives":[{"value":"x","label":"IPV4","confidence":0.9}]}';
+  const { falsePositives } = parsePiiAuditResponse(raw);
+  assert.equal(falsePositives.length, 1);
+});
+
+test('parsePiiAuditResponse: rejects bogus values + token literals', () => {
+  const raw = '{"missed":[{"value":"[[EMAIL_1]]","label":"EMAIL","confidence":0.9},{"value":"bad","label":"123","confidence":0.9}],"false_positives":[]}';
+  const { missed } = parsePiiAuditResponse(raw);
+  assert.equal(missed.length, 0);
+});
+
+test('parsePiiAuditResponse: handles malformed input', () => {
+  const r1 = parsePiiAuditResponse('not json');
+  assert.equal(r1.missed.length, 0);
+  assert.equal(r1.falsePositives.length, 0);
+  assert.ok(r1.parseError);
+  const r2 = parsePiiAuditResponse('{"missed":"oops","false_positives":[]}');
+  assert.equal(r2.missed.length, 0);
+});
+
+test('applyPiiAudit: adds missed PII', () => {
+  const session = createSession();
+  const result = applyPiiAudit(session, {
+    missed: [{ value: 'Marcus Chen', label: 'NAME', confidence: 0.95 }],
+    falsePositives: []
+  });
+  assert.equal(result.added, 1);
+  assert.equal(result.removed, 0);
+  assert.equal(session._literalSecrets.length, 1);
+});
+
+test('applyPiiAudit: removes IPv4 false positive (network category, releasable)', async () => {
+  const session = createSession();
+  const text = 'Internal probe at 192.168.1.42 succeeded.';
+  await scrub(text, session);
+  // The IP should be in the session as IPV4
+  const inv1 = listRedactions(session);
+  assert.ok(inv1.find((i) => i.label === 'IPV4' && i.value === '192.168.1.42'));
+
+  // Now the auditor flags it as a false positive
+  const result = applyPiiAudit(session, {
+    missed: [],
+    falsePositives: [{ value: '192.168.1.42', label: 'IPV4', confidence: 0.9, reason: 'LAN address' }]
+  });
+  assert.equal(result.removed, 1);
+  assert.equal(result.blocked, 0);
+  assert.ok(isSkipped(session, '192.168.1.42', 'IPV4'));
+
+  // Re-scrub the original text: IP should now stay visible
+  const { text: rescrubbed } = await scrub(text, session);
+  assert.ok(rescrubbed.includes('192.168.1.42'), 'IP should stay visible after audit released it');
+});
+
+test('applyPiiAudit: BLOCKS releases of secrets/financial/identifiers categories', async () => {
+  const session = createSession();
+  const text = 'Test card 4111 1111 1111 1111 and SSN 123-45-6789 and key sk-proj-' + 'a'.repeat(48);
+  await scrub(text, session);
+  const inv = listRedactions(session);
+  // sanity: all three should be redacted by regex
+  assert.ok(inv.find((i) => i.label === 'CC'));
+  assert.ok(inv.find((i) => i.label === 'SSN'));
+  assert.ok(inv.find((i) => i.label === 'OPENAI_KEY'));
+
+  const result = applyPiiAudit(session, {
+    missed: [],
+    falsePositives: [
+      { value: '4111 1111 1111 1111', label: 'CC', confidence: 0.99, reason: 'test card' },
+      { value: '123-45-6789', label: 'SSN', confidence: 0.99, reason: 'placeholder' },
+      { value: 'sk-proj-' + 'a'.repeat(48), label: 'OPENAI_KEY', confidence: 0.99, reason: 'placeholder' }
+    ]
+  });
+  assert.equal(result.removed, 0);
+  assert.equal(result.blocked, 3);
+  assert.equal(result.blockedItems.length, 3);
+  // The session should NOT have the values in the skip list
+  assert.ok(!isSkipped(session, '4111 1111 1111 1111', 'CC'));
+  assert.ok(!isSkipped(session, '123-45-6789', 'SSN'));
+
+  // Re-scrub: all three should STILL be redacted
+  const { text: rescrubbed } = await scrub(text, session);
+  assert.ok(!rescrubbed.includes('4111 1111 1111 1111'));
+  assert.ok(!rescrubbed.includes('123-45-6789'));
+  assert.ok(!rescrubbed.includes('sk-proj-' + 'a'.repeat(48)));
+});
+
+test('applyPiiAudit: respects confidence thresholds', () => {
+  const session = createSession();
+  const result = applyPiiAudit(session, {
+    missed: [
+      { value: 'low conf', label: 'NAME', confidence: 0.3 }, // below default 0.6
+      { value: 'High Conf', label: 'NAME', confidence: 0.9 }
+    ],
+    falsePositives: [
+      { value: 'x', label: 'IPV4', confidence: 0.7 } // below release threshold 0.85
+    ]
+  });
+  assert.equal(result.added, 1);
+  assert.equal(result.removed, 0); // low confidence FP rejected
+});
+
+test('applyPiiAudit: full integration — audit fixes both add and remove', async () => {
+  const session = createSession();
+  const text = 'Customer Anna Lee at internal IP 192.168.1.42. Her real email is anna@acme.com.';
+  await scrub(text, session);
+  const inv1 = listRedactions(session);
+  // Regex catches: EMAIL, IPV4 (but NOT Anna Lee — needs LLM)
+  assert.ok(inv1.find((i) => i.label === 'EMAIL'));
+  assert.ok(inv1.find((i) => i.label === 'IPV4'));
+  assert.ok(!inv1.find((i) => i.label === 'NAME'));
+
+  // Auditor: add the name, release the LAN IP
+  applyPiiAudit(session, {
+    missed: [{ value: 'Anna Lee', label: 'NAME', confidence: 0.95 }],
+    falsePositives: [{ value: '192.168.1.42', label: 'IPV4', confidence: 0.9, reason: 'LAN' }]
+  });
+
+  // Re-scrub: name now redacted, IP visible, email still redacted
+  const { text: pass2 } = await scrub(text, session);
+  assert.ok(!pass2.includes('Anna Lee'));
+  assert.ok(pass2.includes('192.168.1.42'));
+  assert.ok(!pass2.includes('anna@acme.com'));
 });

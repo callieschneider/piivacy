@@ -12,6 +12,8 @@ export {
   createSession,
   isExpired,
   registerSecret,
+  skipValue,
+  isSkipped,
   listRedactions
 } from './sessions.js';
 
@@ -29,7 +31,11 @@ export { presets } from './modes.js';
 export {
   buildPiiCheckPrompt,
   parsePiiCheckResponse,
-  applyPiiCheckIssues
+  applyPiiCheckIssues,
+  // Audit: smarter second-pass that also catches FALSE POSITIVES
+  buildPiiAuditPrompt,
+  parsePiiAuditResponse,
+  applyPiiAudit
 } from './llm-check.js';
 
 // BYO-LLM helpers — dynamic mode picking based on query intent
