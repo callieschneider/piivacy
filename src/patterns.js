@@ -535,7 +535,7 @@ export const DEFAULT_PATTERNS = [
   // -------------------- location --------------------
   {
     label: 'ADDRESS_US',
-    regex: /\b\d{1,5}\s+(?:[A-Z][A-Za-z]+\s+){1,4}(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Boulevard|Ln|Lane|Dr|Drive|Way|Pl|Place|Ct|Court|Pkwy|Parkway|Hwy|Highway)\.?\b/g,
+    regex: /\b\d{1,5}\s+(?:[A-Za-z][A-Za-z]*\s+){1,4}(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Boulevard|Ln|Lane|Dr|Drive|Way|Pl|Place|Ct|Court|Pkwy|Parkway|Hwy|Highway)\.?\b/gi,
     category: 'location',
     priority: 50,
     fake: (_value, { counter }) => `${100 + (counter * 100)} Example St`,
